@@ -24,14 +24,14 @@ clusters.web_cluster =
     web  : true
   },{ # Now Helper Services ---------------------------------------------------------
     name : "logger"
-    main : "#{OK_TOP}/helper/logger",
+    main : "#{OK_TOP}/bin/logger",
     listen : "/var/run/okws/logger.sock"
     args :
       topdir : "/var/log/okws"
     local : true 
   },{
     name : "publisher"
-    main : "#{OK_TOP}/helper/publisher"
+    main : "#{OK_TOP}/bin/publisher"
     listen : "/var/run/okws/publisher.sock"
     local : true 
     args :
