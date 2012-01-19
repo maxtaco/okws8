@@ -1,6 +1,7 @@
 
 {OptionParser} = require 'coffee-script/lib/coffee-script/optparse'
 log = require '../lib/log'
+config = require '../lib/config'
 
 #-----------------------------------------------------------------------
 
@@ -21,6 +22,7 @@ SWITCHES = [
 class Okld
   constructor : ->
     @_daemon_mode = false
+    @_config_file = config.config_file
 
   parse_args : (argv, cb) ->
     optionParser = new OptionParser SWITCHES, BANNER
@@ -30,6 +32,8 @@ class Okld
     try
       o = optionParser.parse argv[2..]
       @_daemon_mode = true if o.daemon
+      @_config_file = o["config-file"] if o["config-file"]?
+      console.log "XXX #{JSON.stringify o}"
       rc = 1 if o.help
     catch e
       log.error e.toString()
@@ -39,8 +43,9 @@ class Okld
     cb rc
 
   configure : (cb) -> cb 0
-  run       : (cb) -> cb 0
-
+  run       : (cb) ->
+    console.log "startup file: #{@_config_file}"
+    cb 0
 
 #-----------------------------------------------------------------------
 # the main function
