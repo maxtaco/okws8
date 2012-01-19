@@ -24,7 +24,17 @@ class Okld
     @_daemon_mode = false
     @_config_file = config.config_file
 
-  parse_args : (argv, cb) ->
+  parse_args : (cb) ->
+    argv = require('optimist').
+      usage('usage: $0 [-dh] [-f<file>]').
+      boolean('d').
+      alias('d', 'daemon').
+      describe('d', 'run in daemon mode').
+      
+      
+      
+      
+    
     optionParser = new OptionParser SWITCHES, BANNER
     usage = ->
       log.none optionParser.help()
