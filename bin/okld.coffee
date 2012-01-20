@@ -1,21 +1,22 @@
 
-{OptionParser} = require 'coffee-script/lib/coffee-script/optparse'
+{Getopt} = require '../lib/getopt'
 log = require '../lib/log'
 config = require '../lib/config'
 
 #-----------------------------------------------------------------------
 
-BANNER = '''
-  Usage: okld [options]
-  
-    Start up OKWS, master script
-'''
+SYNOPSIS = "Usage: okld [-dh] [-f<file>]"
 
-SWITCHES = [
-  [ '-d', '--daemon',             'run in daemon mode' ]
-  [ '-f', '--config-file',        'specify config file' ]
-  [ '-h', '--help',               'print this help screen' ]
-]
+SCHEMA = [
+    ['o', 'outfile', ':', "the file to output to" ],
+    ['v', 'verbose', '', 'dump internal states to console' ],
+    ['I', 'input_ext', ':', "the input extension to consider" ],
+    ['O', 'output_ext', ':', "the output extension to output" ]
+  ]
+
+DESCRIPTION = '''
+  - Start up OKWS, the master script...
+''' 
 
 #-----------------------------------------------------------------------
  
@@ -25,6 +26,7 @@ class Okld
     @_config_file = config.config_file
 
   parse_args : (cb) ->
+    op = new 
     argv = require('optimist').
       usage('usage: $0 [-dh] [-f<file>]').
       boolean('d').

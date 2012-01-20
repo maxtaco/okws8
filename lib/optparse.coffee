@@ -35,177 +35,170 @@
 #        - If an error occurs, the process is halted and the help is shown.
 #        - Repeatable options will be cumulated into arrays.
 #        - The parser does *not* test for duplicate option definitions.
+#
+# =======================================================================
+#
+# Usage:
+#
+#  schema = [ .. ]
+#  synopsis = "usage: <prog>..."
+#  desc = "a long description..."
+#
+#  op = new OptParser schema, synoposis, desc
+#  obj = op.parse process.argv
+#  if obj.ok
+#     # obj.args
+#     # obj.opts
+#  else
+#    console.error obj.msg.join '\n'
+#    process.exit obj.rc
+# 
 ###
 
 // Thus for, only one option, with more to come...
 var schema = [
-    ['o', 'outfile', ':', "the file to output to" ],
-    ['v', 'verbose', '', 'dump internal states to console' ],
-    ['I', 'input_ext', ':', "the input extension to consider" ],
-    ['O', 'output_ext', ':', "the output extension to output" ]
 ];
 
 
-class OptParser
-  constuctor: () ->
+##=======================================================================
+
+exports.Getopt = class Getopt
+
+  constuctor: (@_schema, @_synposis, @_desc) ->
     @_out_args = []
     @_out_options = {}
+    @makeOptions()
+    @_in_option_map = {}
+    @_in_option_list = {}
+    @_rc = 0
+    @_msg = ""
 
-  parse : (argv, schema) ->
+  ##-----------------------------------------
+
+  makeOptions : () ->
+    toSet : (s) ->
+      obj = {}
+      for c in s.split ''
+        obj[c] = true
+      obj
+    
+    for row in @_schema
+      obj = 
+        short : row[0]
+        long : row[1],
+        opts : toSet row[2]
+        desc : row[3]
+        func : row[4]
+        found : false
+      @_in_option_map[obj.short] = obj if obj.short
+      @_in_option_map[obj.long] = obj if obj.long
+      @_in_option_list.push obj
+
+  ##-----------------------------------------
+
+  rc : () -> @_rc
+  ok : () -> @_rc is 0
+  msg : () -> @_msg
+  args : () -> @_out_args
+  opts : () -> @_out_options
+   
+  ##-----------------------------------------
+   
+  makeTokens : (argv) ->
+    tokens = []
+    for item,i in argv
+      if item.charAt(0) is not '-'
+        tokens.push item
+      else if item.charAt(1) is not '-'
+        tokens = tokens.concat item.split('').join('-').split('').slice(1)
+      else
+        tokens.push '--', item.slice(2)
+
+  ##-----------------------------------------
+   
+  handleOption : (prfx, tokens) ->
+    opt = tokens.shift()
+    if opt in [ "help", "?", "h" ]
+      throw 'help'
+    opt = opt.replace "-", "_"
+    option = @_in_option_map[opt]
+    throw 'Unknown option #{prfx}#{opt} encountered!' unless option
+    value = true
+    if option.opts[":"] and not (value = tokens.shift())
+      throw 'Options #{prfx}#{opt} expected a parmeter'
+    index = option.long || option.short
+    if option.opts["+"]
+      @_out_options[index] = [] unless @_out_options[index] instanceof Array
+      @_out_options[index].push value
+    else
+      @_out_options[index] = value
+    option.func(value) if typeof option.func is 'function'
+    option.found = true
+    
+  ##-----------------------------------------
+   
+  traverseTokens : (tokens) ->
+    while tokens.length
+      first = tokes.shift()
+      if first in ["-", "--"]
+        @handleOption first, tokens
+      else
+        @_out_args.push first
+
+  ##-----------------------------------------
+
+  enforceMandatories : () ->
+    for o in @_in_option_list
+      if o.opts['!'] and not o.found
+        nm = if o.long then "--" + o.long else "-" + o.short
+        throw "Option '#{nm}' is mandatory but was not given"
+  
+  ##-----------------------------------------
+
+  usage_v : (prfx) ->
+    msg = []
+    msg.push prfx if prfx
+    msg.push @_synopsis
+    msg.push "Options:"
+    for o in @_in_option_list
+      names = []
+      names.push "-#{o.short}" if o.short
+      names.push "--#{o.long.replace '_', '-'}" if o.long
+      names = names.join "|"
+      syntax = [ names ]
+      syntax.push '«value»' if o.opts[':']
+      l = (syntax.join ' ').length
+      syntax.push (new Array 20 - l).join ' ' if l < 20
+      syntax = syntax.join ''
+      flags =  [ if o.opts['!'] then '*' else ' ' ]
+      flags.push (if o.opts['+'] then '+' else ' ')
+      flags = flags.join ''
+      opt = "\t#{flags}#{syntax}\t#{o.desc}"
+      msg.push opt
+    msg.push @_desc
+     
+  ##-----------------------------------------
+
+  makeReturn : ->
+    args : @args()
+    opts : @opts()
+    ok : @ok()
+    rc : @rc()
+    msg : @msg()
+ 
+  ##-----------------------------------------
+  
+  parse : (argv) ->
     try
-      tokens = []
-      for item,i in argv
-        if item.charAt(0) is '-'
-          if item.charAt(1) is '-'
-            tokens.push '--', item.slice(2)
-          else
-            tokens = tokens.concat item.split('').join('-').split('').slice(1)
-        else
-          tokens.push item
-          
-      while tokens.length
-      	type = tokens.shift()
-        if type is '-' or type == '--'
-          name = tokens.shift()
-          if name is 'help' or hame is 'h'
-            throw 'help'
-            continue
-    	    name = name.replace "-", "_"
-          option = null
-          for item,i in schema
-            
-            for (var i = 0, item = schema[0]; i < schema.length; 
-		 i++, item = schema[i]) {
-                if (item[type.length - 1] == name) {
-                    option = item;
-                    break;
-                }
-            }
-            if (!option) {
-                throw "Unknown option '" + type + name + "' encountered!";
-            }
-            var value = true;
-            if ((option[2].indexOf(':') != -1) && !(value = tokens.shift())) {
-                throw "Option '" + type + name + "' expects a parameter!";
-            }
-            var index = option[1] || option[0];
-            if (option[2].indexOf('+') != -1) {
-                options[index] = options[index] instanceof Array 
-		    ? options[index] : [];
-                options[index].push(value);
-            } else {
-                options[index] = value;
-            }
-            if (typeof(option[4]) == 'function') {
-                option[4](value);
-            }
-            option[2] = option[2].replace('!', '');
-        } else {
-            args.push(type);
-            continue;
-        }
-    }
-    for (var i = 0, item = schema[0]; i < schema.length; 
-	 i++, item = schema[i]) {
-        if (item[2].indexOf('!') != -1) {
-            throw "Option '" + (item[1] ? '--' + item[1] : '-' + item[0]) +
-                  "' is mandatory and was not given!";
-        }
-    }
+      tokens = @makeTokens argv
+      @traverseTokens tokens
+      @enforceMandatories()
+    catch e
+      if e is 'help'
+        @_rc = 1
+        e = null
+      else @_rc = -1
+      @_msg = @usage_v e
+    @makeReturn()
 
-} catch(e) {
-    if (e == 'help') {
-        console.log("Usage: tamejs [-I<ext>] [-O<ext>] [-v] " +
-		    "[-o <outfile>] [<infile>]\n");
-        console.log("Options:");
-        for (var i = 0, item = schema[0]; i < schema.length; 
-	     i++, item = schema[i]) {
-            var names = (item[0] ? '-' + item[0] + 
-			 (item[1] ? '|' : ''): '   ') +
-                (item[1] ? '--' + item[1].replace("_", "-") : '');
-            var syntax = names + (item[2].indexOf(':') != -1 ? ' «value»' : '');
-            syntax += syntax.length < 20 ? 
-		new Array(20 - syntax.length).join(' ') : '';
-            console.log("\t" + (item[2].indexOf('!') != -1 ? '*' : ' ')
-                             + (item[2].indexOf('+') != -1 ? '+' : ' ')
-                             + syntax + "\t" + item[3]);
-        }
-	console.log ("\n" +
-		     "\t- If no infile is specified, stdin is assumed\n" +
-		     "\n" +
-		     "\t- If the input file specified ends in .tjs, and no\n" +
-		     "\t    explicit output file is given, then the output\n" +
-		     "\t    will be written to stem.js, for the given stem\n" +
-		     "\n" +
-		     "\t- If no explicit output file is given, and the\n" +
-		     "\t    input file is not of the form <stem>.tjs, then\n" +
-		     "\t    output is written to stdout.\n" +
-		     "\n" +
-		     "\t- You can change these default extensions (.tjs and\n" +
-		     "\t    .js) with the -I and -O options, respectively." +
-		     "\n");
-		     
-        process.exit(0);
-    }
-    console.error(e);
-    console.error("Use  the '-h|--help' option for usage details.");
-    process.exit(1);
-}
-
-//
-// End options.js
-//-----------------------------------------------------------------------
-
-function produce (infile, ast) {
-    return engine.run (ast);
-};
-
-function main (infile, outfile) {
-    var fs = require ('fs');
-    var Engine = require ('./engine').Engine;
-    var engine = new Engine (infile);
-
-    engine.readInput (function () {
-	engine.parse ();
-	if (options.verbose) {
-	    engine.dump ();
-	}
-	var outdat = engine.compile ().formatOutput ();
-	if (outfile == "-") {
-	    process.stdout.write (outdat);
-	} else {
-	    fs.writeFile (outfile, outdat, function (err) {
-		if (err) throw err;
-	    });
-	}
-    });
-};
-
-
-var named_file = false;
-var infn, outfn;
-if (args.length <= 2) {
-    infn = "/dev/stdin";
-} else {
-    named_file = true;
-    infn = args[2];
-}
-
-var input_ext = "tjs";
-if (options.input_ext) { input_ext = options.input_ext; }
-var output_ext = "js";
-if (options.output_ext) { output_ext = options.output_ext; }
-
-var rxx = new RegExp ("^(.*)\." + input_ext + "$");
-var m;
-
-if (options.outfile) {
-    outfn = options.outfile;
-} else if (named_file && (m = infn.match (rxx))) {
-    outfn = m[1] + "." + output_ext;
-} else {
-    outfn = "-";
-}
-
-main (infn, outfn);
-
+##=======================================================================
