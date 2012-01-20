@@ -8,10 +8,8 @@ config = require '../lib/config'
 SYNOPSIS = "Usage: okld [-dh] [-f<file>]"
 
 SCHEMA = [
-    ['o', 'outfile', ':', "the file to output to" ],
-    ['v', 'verbose', '', 'dump internal states to console' ],
-    ['I', 'input_ext', ':', "the input extension to consider" ],
-    ['O', 'output_ext', ':', "the output extension to output" ]
+    [ 'd', 'daemon',      '',  'run in daemon mode' ],
+    [ 'f', 'config-file', ':', 'the config file to use' ]
   ]
 
 DESCRIPTION = '''
@@ -25,34 +23,17 @@ class Okld
     @_daemon_mode = false
     @_config_file = config.config_file
 
-  parse_args : (cb) ->
-    op = new 
-    argv = require('optimist').
-      usage('usage: $0 [-dh] [-f<file>]').
-      boolean('d').
-      alias('d', 'daemon').
-      describe('d', 'run in daemon mode').
-      
-      
-      
-      
-    
-    optionParser = new OptionParser SWITCHES, BANNER
-    usage = ->
-      log.none optionParser.help()
-    rc = 0
-    try
-      o = optionParser.parse argv[2..]
-      @_daemon_mode = true if o.daemon
-      @_config_file = o["config-file"] if o["config-file"]?
-      console.log "XXX #{JSON.stringify o}"
-      rc = 1 if o.help
-    catch e
-      log.error e.toString()
-      rc = -2
-
-    usage() unless rc is 0
-    cb rc
+  parse_args : (argv, cb) ->
+    go = new Getopt SCHEMA, SYNOPSIS, DESCRIPTION
+    res = go.parse argv
+    if res.ok
+      @_daemon_mode = true if res.opts.daemon
+      @_config_file = res.opts.config_file if res.opts.config_file?
+      console.log "XXX #{JSON.stringify res.opts}"
+    else
+      for line in res.msg
+        log.error line 
+    cb res.rc
 
   configure : (cb) -> cb 0
   run       : (cb) ->
@@ -66,9 +47,9 @@ okld = new Okld()
 rc = 0
 log.set_proc process.argv[1]
 
-await okld.parse_args process.argv, defer rc if rc is 0
-await okld.configure defer rc                if rc is 0
-await okld.run defer rc                      if rc is 0
+await okld.parse_args process.argv[2..], defer rc  if rc is 0
+await okld.configure defer rc                      if rc is 0
+await okld.run defer rc                            if rc is 0
 
 process.exit rc
 

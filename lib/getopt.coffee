@@ -55,28 +55,29 @@
 # 
 ###
 
-// Thus for, only one option, with more to come...
-var schema = [
-];
-
-
 ##=======================================================================
 
 exports.Getopt = class Getopt
 
-  constuctor: (@_schema, @_synposis, @_desc) ->
+  constructor: (@_schema, @_synopsis, @_desc) ->
     @_out_args = []
     @_out_options = {}
-    @makeOptions()
     @_in_option_map = {}
-    @_in_option_list = {}
+    @_in_option_list = []
     @_rc = 0
     @_msg = ""
+    @makeOptions()
 
   ##-----------------------------------------
 
+  optClean : (s) ->
+    if s then s.replace '-', '_'
+    else null
+   
+  ##-----------------------------------------
+
   makeOptions : () ->
-    toSet : (s) ->
+    toSet = (s) ->
       obj = {}
       for c in s.split ''
         obj[c] = true
@@ -106,13 +107,14 @@ exports.Getopt = class Getopt
    
   makeTokens : (argv) ->
     tokens = []
-    for item,i in argv
-      if item.charAt(0) is not '-'
+    for item in argv
+      if not (item.charAt(0) is '-')
         tokens.push item
-      else if item.charAt(1) is not '-'
+      else if not (item.charAt(1) is '-')
         tokens = tokens.concat item.split('').join('-').split('').slice(1)
       else
         tokens.push '--', item.slice(2)
+    tokens
 
   ##-----------------------------------------
    
@@ -120,13 +122,12 @@ exports.Getopt = class Getopt
     opt = tokens.shift()
     if opt in [ "help", "?", "h" ]
       throw 'help'
-    opt = opt.replace "-", "_"
     option = @_in_option_map[opt]
-    throw 'Unknown option #{prfx}#{opt} encountered!' unless option
+    throw "Unknown option #{prfx}#{opt} encountered!" unless option
     value = true
     if option.opts[":"] and not (value = tokens.shift())
-      throw 'Options #{prfx}#{opt} expected a parmeter'
-    index = option.long || option.short
+      throw "Options #{prfx}#{opt} expected a parmeter"
+    index = (@optClean option.long) || option.short
     if option.opts["+"]
       @_out_options[index] = [] unless @_out_options[index] instanceof Array
       @_out_options[index].push value
@@ -139,7 +140,7 @@ exports.Getopt = class Getopt
    
   traverseTokens : (tokens) ->
     while tokens.length
-      first = tokes.shift()
+      first = tokens.shift()
       if first in ["-", "--"]
         @handleOption first, tokens
       else
@@ -163,19 +164,20 @@ exports.Getopt = class Getopt
     for o in @_in_option_list
       names = []
       names.push "-#{o.short}" if o.short
-      names.push "--#{o.long.replace '_', '-'}" if o.long
+      names.push "--#{o.long}" if o.long
       names = names.join "|"
       syntax = [ names ]
       syntax.push '«value»' if o.opts[':']
       l = (syntax.join ' ').length
       syntax.push (new Array 20 - l).join ' ' if l < 20
-      syntax = syntax.join ''
+      syntax = syntax.join ' '
       flags =  [ if o.opts['!'] then '*' else ' ' ]
       flags.push (if o.opts['+'] then '+' else ' ')
       flags = flags.join ''
       opt = "\t#{flags}#{syntax}\t#{o.desc}"
       msg.push opt
     msg.push @_desc
+    msg
      
   ##-----------------------------------------
 
