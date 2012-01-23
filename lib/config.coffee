@@ -16,6 +16,14 @@ exports.Config = class Config
       @[a] = () => @lookup a
 
   #-----------------------------------------
+
+  json : () -> @_json
+   
+  #-----------------------------------------
+
+  export_to_rpc : () -> { file : @_file_name, obj : @_json }
+   
+  #-----------------------------------------
   
   open : (cb) ->
     f = @_file_name

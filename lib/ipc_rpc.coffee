@@ -28,7 +28,6 @@ class Reply
 
 exports.Stream = class Stream extends EventEmitter
 
-
   ##------------------------------
   
   constructor : (h, @_name) ->
