@@ -16,7 +16,6 @@ exports.ServiceHandle = class ServiceHandle
     @_parent = parent
     @_name = d.name
     @_config = d
-    @_receive_cbs = List
     @_pid = -1
 
   ##-----------------------------------------
@@ -58,7 +57,6 @@ exports.ServiceHandle = class ServiceHandle
   exit_cb : (code) ->
     @_channel = null
     # all remaining receivers need to know they are out of luck!
-    @_receive_cbs.walk (o) -> o(null, null)
     @problem "died with code=#{code}"
     @relaunch()
    
@@ -95,7 +93,7 @@ exports.ServiceHandle = class ServiceHandle
       setsid : false
     @_channel = cp.fork cl.shift(), cl, opts
     @_pid = @_channel.pid
-    @_rpc_channel = new RpcStream @_channel
+    @_rpc_channel = new RpcStream @_channel, @prefix()
     await @ping defer rc
     cb rc
    
