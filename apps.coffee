@@ -12,6 +12,18 @@ clusters.web_cluster =
     cert : "/some/certfile"
     service_autodir : "websrv/"
 
+  helper_services : [{
+    name : "logger"
+    main : "#{OK_TOP}/bin/logger",
+    listen : "/var/run/okws/logger.sock"
+    rundir : "/var/log/okws"
+  },{
+    name : "publisher"
+    main : "#{OK_TOP}/bin/publisher"
+    listen : "/var/run/okws/publisher.sock"
+    rundir : "/var/www/docs"
+  }]
+
   services : [{ ## Web services first ------------------------------------------------
     name   : "profile",
     uri    : [ "/profile", "/foo", /// /profile/:\d+.* /// ]
@@ -22,20 +34,6 @@ clusters.web_cluster =
     name : "splash",
     uri  :  "/"
     web  : true
-  },{ # Now Helper Services ---------------------------------------------------------
-    name : "logger"
-    main : "#{OK_TOP}/bin/logger",
-    listen : "/var/run/okws/logger.sock"
-    args :
-      topdir : "/var/log/okws"
-    local : true 
-  },{
-    name : "publisher"
-    main : "#{OK_TOP}/bin/publisher"
-    listen : "/var/run/okws/publisher.sock"
-    local : true 
-    args :
-      topdir : "/var/www/docs"
   }]
 
 H=4  # number of match cluster hosts

@@ -1,7 +1,9 @@
 
-{Getopt} = require '../lib/getopt'
-log = require '../lib/log'
-config = require '../lib/config'
+{Getopt}  = require '../lib/getopt'
+log       = require '../lib/log'
+config    = require '../lib/config'
+constants = require '../lib/constants'
+fs        = require 'fs'
 
 #-----------------------------------------------------------------------
 
@@ -14,14 +16,19 @@ SCHEMA = [
 
 DESCRIPTION = '''
   - Start up OKWS, the master script...
-''' 
+'''
 
-#-----------------------------------------------------------------------
+#=======================================================================
  
 class Okld
+  
+  ##----------------------------------------
+ 
   constructor : ->
     @_daemon_mode = false
-    @_config_file = config.config_file
+    @_config_file = constants.config_file
+
+  ##----------------------------------------
 
   parse_args : (argv, cb) ->
     go = new Getopt SCHEMA, SYNOPSIS, DESCRIPTION
@@ -29,18 +36,28 @@ class Okld
     if res.ok
       @_daemon_mode = true if res.opts.daemon
       @_config_file = res.opts.config_file if res.opts.config_file?
-      console.log "XXX #{JSON.stringify res.opts}"
     else
       for line in res.msg
         log.error line 
     cb res.rc
 
-  configure : (cb) -> cb 0
+  ##----------------------------------------
+  
+  configure : (cb) ->
+    @_cfg = new Config @_config_file
+    await @_cfg.open defer rc
+    (rc = @_cfg.check) if rc is 0
+    cb rc
+
+  ##----------------------------------------
+  
   run       : (cb) ->
+    @_okd = new OkdHandle this
+    await @launchHelperServices defer rc if rc is 0
     console.log "startup file: #{@_config_file}"
     cb 0
 
-#-----------------------------------------------------------------------
+#=======================================================================
 # the main function
  
 okld = new Okld()
