@@ -1,11 +1,14 @@
 
-cp     = require 'child_process'
-log    = require './log'
-{List} = require './list'
+cp        = require 'child_process'
+log       = require './log'
+{List}    = require './list'
+RpcStream = require('./ipc_rpc').Stream
+{sc}      = require './status_codes'
+
 
 #=======================================================================
 
-class Service
+exports.ServiceHandle = class ServiceHandle
   
   ##-----------------------------------------
 
@@ -14,6 +17,7 @@ class Service
     @_name = d.name
     @_config = d
     @_receive_cbs = List
+    @_pid = -1
 
   ##-----------------------------------------
 
@@ -43,11 +47,19 @@ class Service
 
   ##-----------------------------------------
 
+  prefix : -> "#{_name}[#{_pid}]"
+   
+  ##-----------------------------------------
+
+  problem : (m) -> log.error "#{@prefix()} #{m}" 
+  
+  ##-----------------------------------------
+
   exit_cb : (code) ->
     @_channel = null
     # all remaining receivers need to know they are out of luck!
     @_receive_cbs.walk (o) -> o(null, null)
-    log.error "#{@_name} died with code=#{code}"
+    @problem "died with code=#{code}"
     @relaunch()
    
   ##-----------------------------------------
@@ -60,22 +72,17 @@ class Service
    
   ##-----------------------------------------
 
-  ##-----------------------------------------
-
-  receive : (cb) ->
-    await
-      receive_cb = defer msg, fd
-      rch = @_receivers.push receive_cb
-      @_channel.once 'message', receive_cb
-    @_receivers.remove rch
-    cb msg, fd
-   
-  ##-----------------------------------------
-
   ping : (cb) ->
-    @_channel.send { ping : true }
-    await @receive defer msg, fd
-    cb(msg?.pong)
+    @_rpc_channel.call "ping", null, null, defer code, res
+    rc = if code isnt sc.OK
+      @problem "ping returned with code=#{code}"
+      -3
+    else if res isnt @_pid
+      @problem "ping returned with wronge pid (#{res} v #{@_pid})"
+      -4
+    else 0
+    
+    cb rc
 
   ##-----------------------------------------
   
@@ -87,7 +94,8 @@ class Service
       env : process.env
       setsid : false
     @_channel = cp.fork cl.shift(), cl, opts
-    @_channel.on 'exit', (code) => @exit_cb code
+    @_pid = @_channel.pid
+    @_rpc_channel = new RpcStream @_channel
     await @ping defer rc
     cb rc
    
