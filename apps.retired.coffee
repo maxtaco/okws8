@@ -1,7 +1,20 @@
 
 exports.service_prefix = "rpcsrv"
 
-exports.clusters = clusters = {}
+
+exports.helpers =
+  logger : 
+    main : "#{OK_TOP}/bin/logger",
+    listen : "/var/run/okws/logger.sock"
+    rundir : "/var/log/okws"
+  publisher:
+    main : "#{OK_TOP}/bin/publisher"
+    listen : "/var/run/okws/publisher.sock"
+    rundir : "/var/www/docs"
+  demux : 
+    main : "#{OK_TOP}/bin/demux"
+    listen : "/var/run/okws/demux.sock"
+    rundir : "/var/run/okws/empty"
 
 clusters.web_cluster = 
   hosts : [ "ws-0", "ws-1" ]
@@ -12,19 +25,7 @@ clusters.web_cluster =
     cert : "/some/certfile"
     service_autodir : "websrv/"
 
-  helper_services : [{
-    name : "logger"
-    main : "#{OK_TOP}/bin/logger",
-    listen : "/var/run/okws/logger.sock"
-    rundir : "/var/log/okws"
-  },{
-    name : "publisher"
-    main : "#{OK_TOP}/bin/publisher"
-    listen : "/var/run/okws/publisher.sock"
-    rundir : "/var/www/docs"
-  }]
-
-  services : [{ ## Web services first ------------------------------------------------
+  web_services : [{
     name   : "profile",
     uri    : [ "/profile", "/foo", /// /profile/:\d+.* /// ]
     listen : [ 81, 82 ]
@@ -70,10 +71,3 @@ cluster.rpc_cluster =
       listen : 3012
     }]
 
-edges = [
-   [ "web_cluster.*.*",
-      ["..publisher", "..logger", "rpc_cluster.*.*", "match_cluster.*.coordinated" ]
-   [ "match_cluster.*.*", "match_cluster.*.coordinated" ],
-]
-
-clusters = [ web_cluster, match_cluster, rpc_cluster ]

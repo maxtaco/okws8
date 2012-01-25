@@ -11,9 +11,8 @@ exports.ServiceHandle = class ServiceHandle
   
   ##-----------------------------------------
 
-  constructor : (parent, d) ->
+  constructor : (parent, d, @_name) ->
     @_parent = parent
-    @_name = d.name
     @_config = d
     @_pid = -1
 
@@ -111,3 +110,16 @@ exports.ServiceHandle = class ServiceHandle
         reply.reject sc.RPC_MSG_PROC_UNAVAIL
          
   ##-----------------------------------------
+   
+#=======================================================================
+
+exports.DemuxHandle = class DemuxHandle extends ServiceHandle
+
+  ##-----------------------------------------
+   
+  constructor : (parent, d) ->
+    super parent, d, "demux"
+  
+  ##-----------------------------------------
+   
+#=======================================================================

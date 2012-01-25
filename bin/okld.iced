@@ -4,14 +4,19 @@ log       = require '../lib/log'
 config    = require '../lib/config'
 constants = require '../lib/constants'
 fs        = require 'fs'
+sh        = require '../lib/service_handle'
 
 #-----------------------------------------------------------------------
 
-SYNOPSIS = "Usage: okld [-dh] [-f<file>]"
+SYNOPSIS = "Usage: okld [-dhi] [-f<file>]"
 
 SCHEMA = [
-    [ 'd', 'daemon',      '',  'run in daemon mode' ],
-    [ 'f', 'config-file', ':', 'the config file to use' ]
+    [ 'd', 'daemon',       '',  'run in daemon mode' ],
+    [ 'f', 'config-file',  ':', 'the config file to use' ]
+    [ 'i', 'in-place',     '',  'run in-place in the current dir' ]
+    [ 't', 'top-data-dir', ':', 'override the top data directory' ]
+    [ 'T', 'top-dir',      ':', 'override the top directory' ]
+    [ 's', 'top-src-dir',  ':', 'override the top src directory' ]
   ]
 
 DESCRIPTION = '''
@@ -25,8 +30,10 @@ class Okld
   ##----------------------------------------
  
   constructor : ->
-    @_daemon_mode = false
     @_config_file = constants.config_file
+    @_services = []
+    @_helpers = []
+    @_argv_opts = {}
 
   ##----------------------------------------
 
@@ -34,7 +41,7 @@ class Okld
     go = new Getopt SCHEMA, SYNOPSIS, DESCRIPTION
     res = go.parse argv
     if res.ok
-      @_daemon_mode = true if res.opts.daemon
+      @_argv_opts = res.opts
       @_config_file = res.opts.config_file if res.opts.config_file?
     else
       for line in res.msg
@@ -44,18 +51,28 @@ class Okld
   ##----------------------------------------
   
   configure : (cb) ->
-    @_cfg = new Config @_config_file
-    await @_cfg.open defer rc
-    (rc = @_cfg.check) if rc is 0
-    cb rc
+    log.info "startup with config file: #{@_config_file}"
+    @_cfg = new Config @_config_file, @_argv_opts
+    await @_cfg.open defer ok
+    (ok = @_cfg.check) if ok
+    cb if ok then 0 else -3
 
   ##----------------------------------------
   
-  run       : (cb) ->
-    @_okd = new OkdHandle this
-    await @launchHelperServices defer rc if rc is 0
-    console.log "startup file: #{@_config_file}"
-    cb 0
+  launchHelpers : (cb) ->
+    ok = true
+    for h in @_helpers when ok
+      await h.launch defer ok
+    cb ok
+   
+  ##----------------------------------------
+  
+  run : (cb) ->
+    if o = @_cfg.helpers()?.demux
+      @_okd = new sh.DemuxHandle @, o
+      @_helpers.push @_okd
+    await @launchHelpers defer rc
+    cb rc
 
 #=======================================================================
 # the main function

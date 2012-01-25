@@ -10,6 +10,7 @@ exports ServiceBase = class ServiceBase
     @_pid = process.pid
     @_parent_proc = new RpcStream new RpcStream process, @prefix()
     @_start()
+    @_ping_waiter = null
 
   prefix : -> #{@_argv[1]}[#{@_pid}]"
 
@@ -25,6 +26,10 @@ exports ServiceBase = class ServiceBase
 
   handle_ping : (arg, h, reply) ->
     reply.reply @_pid, null
+    if @_ping_waiter
+      e = @_ping_waiter
+      @_ping_waiter = null
+      e()
 
   fetch_config : (cb) ->
     await @_parent_proc.call "fetch_config", null, null, defer err, res
@@ -34,9 +39,15 @@ exports ServiceBase = class ServiceBase
     else if not res.file? or not res.obj?
       log.error "incomplete results passed back"
     else
-      @_config = new Config res.file
-      @_config.set_json res.obj
+      @_config = new Config 
+      @_config.import_from_rpc res
       ok = true
     cb ok
-    
-    
+
+  launch : (cb) ->
+    await @_ping_waiter = defer()
+    await @fetch_config defer()
+
+  run : () ->
+    await launch defer()
+    log.info "Output Config: #{JSON.stingify @_config.export_to_rpc()}"
