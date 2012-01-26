@@ -1,7 +1,5 @@
-
 cp        = require 'child_process'
 log       = require './log'
-{List}    = require './list'
 RpcStream = require('./ipc_rpc').Stream
 {sc}      = require './status_codes'
 
@@ -32,7 +30,7 @@ exports.ServiceHandle = class ServiceHandle
       value = null
       
       if typeof v is 'boolean'
-        if not v then
+        if not v 
           continue
       else
         value = v

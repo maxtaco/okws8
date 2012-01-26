@@ -1,4 +1,6 @@
 
+path = require 'path'
+
 constants =
   top_dir : "/usr/local/nws"
   restart_delay : 2000 # by default wait 2s before restarting something

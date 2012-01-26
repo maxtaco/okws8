@@ -95,7 +95,7 @@ exports.Stream = class Stream extends EventEmitter
 
   ##------------------------------
   
-  _kill_receivers : 
+  _kill_receivers : ->
     tab = @_tab
     @_tab = {}
     for k,cb of tab

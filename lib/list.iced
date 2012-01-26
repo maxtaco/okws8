@@ -1,7 +1,7 @@
 
 exports.List = class List
 
-  constructor:
+  constructor: ->
     @_head = null
     @_tail = null
 

@@ -1,7 +1,7 @@
 
 {Getopt}  = require '../lib/getopt'
 log       = require '../lib/log'
-config    = require '../lib/config'
+{Config}  = require '../lib/config'
 constants = require '../lib/constants'
 fs        = require 'fs'
 sh        = require '../lib/service_handle'
@@ -25,7 +25,7 @@ DESCRIPTION = '''
 
 #=======================================================================
  
-class Okld
+class Launcher
   
   ##----------------------------------------
  
@@ -77,7 +77,7 @@ class Okld
 #=======================================================================
 # the main function
  
-okld = new Okld()
+okld = new Launcher()
 rc = 0
 log.set_proc process.argv[1]
 
