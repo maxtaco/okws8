@@ -74,7 +74,7 @@ exports.Config = class Config
     else if t = @_argv_opts.top_dir?      then t
     else if t = @_json.top_data_dir?      then t
     else if t = @_json.top_dir?           then t
-    else config.top_dir
+    else constants.top_dir
     @config_path d, f
     
   #-----------------------------------------
@@ -85,16 +85,16 @@ exports.Config = class Config
     else if t = @_argv_opts.top_dir?     then t
     else if t = @_json.top_src_dir?      then t
     else if t = @_json.top_dir?          then t
-    else config.top_dir
+    else constants.top_dir
     @config_path d, f
 
   #-----------------------------------------
   
-  bin_dir    : (f) -> @config_path (top_data_dir "bin"), f
+  bin_dir    : (f) -> @config_path (@top_data_dir "bin"), f
   
   #-----------------------------------------
   
-  secondary_dir : (d, f) -> @config_path (top_src_dir d), f
+  secondary_dir : (d, f) -> @config_path (@top_src_dir d), f
   socket_dir : (f) -> @secondary_dir "run", f
   empty_jail : ()  -> @socket_dir    "empty"
   docs_dir   : (f) -> @secondary_dir "www", f
