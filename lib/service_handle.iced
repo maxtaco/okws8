@@ -2,6 +2,7 @@ cp        = require 'child_process'
 log       = require './log'
 RpcStream = require('./ipc_rpc').Stream
 {sc}      = require './status_codes'
+fs        = require 'fs'
 
 #=======================================================================
 
@@ -42,7 +43,7 @@ exports.ServiceHandle = class ServiceHandle
 
   ##-----------------------------------------
 
-  prefix : -> "#{_name}[#{_pid}]"
+  prefix : -> "#{@_name}[#{@_pid}]"
    
   ##-----------------------------------------
 
@@ -67,7 +68,7 @@ exports.ServiceHandle = class ServiceHandle
   ##-----------------------------------------
 
   ping : (cb) ->
-    @_rpc_channel.call "ping", null, null, defer code, res
+    await @_rpc_channel.call "ping", null, null, defer code, res
     ok = if code isnt sc.OK
       @problem "ping returned with code=#{code}"
       false
@@ -81,16 +82,25 @@ exports.ServiceHandle = class ServiceHandle
   
   launch : (cb) ->
     cl = @makeCmdLine()
-    log.info "#{@_name}: launching: #{cl.join ' '}"
-    opts =
-      cwd : @_config.rundir
-      env : process.env
-      setsid : false
-    @_channel = cp.fork cl.shift(), cl, opts
-    @_channel.on 'call', (args...) => @handle_child_call args
-    @_pid = @_channel.pid
-    @_rpc_channel = new RpcStream @_channel, @prefix()
-    await @ping defer ok
+    rd = @_config.rundir
+    log.info "#{@_name}: launching: #{cl.join ' '} (rundir: #{rd})"
+    await fs.stat rd, defer err, stats
+    if err
+      log.error "In sanity check of run dir '#{rd}': #{err}"
+    else if not stats
+      log.error "Cannot find directory #{rd}"
+    else if not stats.isDirectory()
+      log.error "Run dir #{rd} is not a directory"
+    else
+      opts =
+        cwd : @_config.rundir
+        env : process.env
+        setsid : false
+      @_channel = cp.fork cl.shift(), cl, opts
+      @_channel.on 'call', (args...) => @handle_child_call args
+      @_pid = @_channel.pid
+      @_rpc_channel = new RpcStream @_channel, @prefix()
+      await @ping defer ok
     cb ok
    
   ##-----------------------------------------

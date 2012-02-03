@@ -62,10 +62,10 @@ exports.Config = class Config
     if f
       try
         raw = require f
-        for k, v in raw when typeof v isnt 'function'
+        for k, v of raw when typeof v isnt 'function'
           @_json[k] = v
         if generated = raw.generator? @
-          for k, v in generated
+          for k, v of generated
             @_json[k] = v
         ok = true
       catch e

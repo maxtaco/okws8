@@ -33,7 +33,7 @@ exports.Stream = class Stream extends EventEmitter
   constructor : (h, @_name) ->
     super()
     @_handle = h
-    @_eof = false
+    @_eof_flag = false
     @_tab = {}
     @_xid = 1
     @_start()
@@ -52,7 +52,7 @@ exports.Stream = class Stream extends EventEmitter
   ##------------------------------
   
   _handle_exit : (code) ->
-    @_eof()
+    @_hit_eof()
     @emit 'exit', code
     
   ##------------------------------
@@ -103,16 +103,16 @@ exports.Stream = class Stream extends EventEmitter
 
   ##------------------------------
   
-  _eof : () ->
+  _hit_eof : () ->
     @_handle = null
-    @_eof = true
+    @_eof_flag = true
     @_kill_receivers()
   
   ##------------------------------
   
   _handle_message : (m, h) ->
     if m == null
-      @_eof()
+      @_hit_eof()
     else if not m.xid?
       @_error "No XID found in RPC message"
     else if m.name and m.dir is 0
@@ -126,7 +126,7 @@ exports.Stream = class Stream extends EventEmitter
   # the public interface:
   
   call : (name, arg, h, cb) ->
-    x = @new_xid()
+    x = @_new_xid()
     obj =
       xid : x
       name : name
