@@ -34,7 +34,14 @@ class Launcher
     @_services = []
     @_helpers = []
     @_argv_opts = {}
+    @_cfg = null
+    @_run_state = constants.run_states.STARTUP
 
+  ##----------------------------------------
+
+  run_state   : () -> @_run_state
+  config      : () -> @_cfg
+   
   ##----------------------------------------
 
   parse_args : (argv, cb) ->
@@ -63,6 +70,7 @@ class Launcher
     ok = true
     for h in @_helpers when ok
       await h.launch defer ok
+    log.error "failure in launchHelpers, aborting...." unless ok
     cb ok
    
   ##----------------------------------------
@@ -71,12 +79,14 @@ class Launcher
     if o = @_cfg.helpers()?.demux
       @_okd = new sh.DemuxHandle @, o
       @_helpers.push @_okd
-    await @launchHelpers defer rc
+    await @launchHelpers defer ok
+    rc = if ok then 0 else -4
     cb rc
 
 #=======================================================================
 # the main function
- 
+
+iced.catchExceptions() 
 okld = new Launcher()
 rc = 0
 log.set_proc process.argv[1]
@@ -85,7 +95,7 @@ await okld.parse_args process.argv[2..], defer rc  if rc is 0
 await okld.configure defer rc                      if rc is 0
 await okld.run defer rc                            if rc is 0
 
-process.exit rc
+process.exit rc                                    unless rc is 0
 
 #
 #-----------------------------------------------------------------------

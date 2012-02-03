@@ -15,7 +15,7 @@ exports.Config = class Config
     accessors = (k for k,v of constants)
     @_json = {}
     for a in accessors
-      @[a] = () => @lookup a
+      @[a] = ((self, v) -> () => self.lookup v)(@, a)
     for k in [ "helpers" ]
       @[k] = ( -> @_json[k] )
 
@@ -83,7 +83,8 @@ exports.Config = class Config
 
   #-----------------------------------------
   
-  lookup : (k) -> if @_json[k]? then @_json[k] else constants[k]
+  lookup : (k) ->
+    if @_json[k]? then @_json[k] else constants[k]
   
   #========================================
 

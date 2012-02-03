@@ -3,6 +3,7 @@ log       = require './log'
 RpcStream = require('./ipc_rpc').Stream
 {sc}      = require './status_codes'
 fs        = require 'fs'
+constants = require './constants'
 
 #=======================================================================
 
@@ -60,10 +61,11 @@ exports.ServiceHandle = class ServiceHandle
   ##-----------------------------------------
 
   relaunch : () ->
-    unless @_parent.shutdown()
-      await setTimeout defer(), @_parent.config().restartDelay()
-    unless @_parent.shutdown()
-      launch()
+    if @_parent.run_state() is constants.run_states.RUN
+      d = @_parent.config().restart_delay()
+      await setTimeout defer(), d
+    if @_parent.run_state() is constants.run_states.RUN
+      @launch()
    
   ##-----------------------------------------
 
@@ -98,6 +100,7 @@ exports.ServiceHandle = class ServiceHandle
         setsid : false
       @_channel = cp.fork cl.shift(), cl, opts
       @_channel.on 'call', (args...) => @handle_child_call args
+      @_channel.on 'exit', (code) => @exit_cb code
       @_pid = @_channel.pid
       @_rpc_channel = new RpcStream @_channel, @prefix()
       await @ping defer ok
