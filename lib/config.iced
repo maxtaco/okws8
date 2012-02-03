@@ -1,6 +1,8 @@
 
 path      = require 'path'
 constants = require './constants'
+log       = require './log'
+fs        = require 'fs'
 
 ##=======================================================================
 
@@ -41,16 +43,39 @@ exports.Config = class Config
     @_argv_opts = o.argv_opts 
    
   #-----------------------------------------
+
+  resolve_config_file : (cb) ->
+    name_in = @_file_name
+    await fs.realpath name_in, defer err, name_out
+    if err
+      log.error "Cannot resolve file #{name_in}: #{err}"
+    else
+      log.info "Resolving #{name_in} -> #{name_out}"
+      @_file_name = name_out
+    cb name_out
+   
+  #-----------------------------------------
   
-  open : ->
-    f = @_file_name
-    raw = require @_file_name
-    for k, v in raw when typeof v isnt 'function'
-      @_json[k] = v
-    if generated = raw.generator? @
-      for k, v in generated
-        @_json[k] = v
-    true
+  open : (cb) ->
+    await @resolve_config_file defer f
+    ok = false
+    if f
+      try
+        raw = require f
+        for k, v in raw when typeof v isnt 'function'
+          @_json[k] = v
+        if generated = raw.generator? @
+          for k, v in generated
+            @_json[k] = v
+        ok = true
+      catch e
+        log.error "In requiring config file #{f}:"
+        console.log e.stack
+        ok = false
+    else
+      log.error "Cannot find config file #{f}"
+      ok = false
+    cb ok
   
   #-----------------------------------------
   
@@ -98,5 +123,6 @@ exports.Config = class Config
   socket_dir : (f) -> @secondary_dir "run", f
   empty_jail : ()  -> @socket_dir    "empty"
   docs_dir   : (f) -> @secondary_dir "www", f
+  log_dir    : (f) -> @secondary_dir "log", f
 
 ##=======================================================================
