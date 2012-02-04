@@ -1,4 +1,6 @@
 
+console.log "hello?"
+
 {ServiceBase} = require '../lib/service_base'
 
 ##=======================================================================

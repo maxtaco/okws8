@@ -20,8 +20,7 @@ exports.ServiceHandle = class ServiceHandle
 
   makeCmdLine : ->
     out = []
-    out[0] = process.argv[0]
-    out[1] = @_config.main
+    out.push @_config.main
     
     for k,v of @_config.args
       
