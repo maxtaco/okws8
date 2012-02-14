@@ -94,28 +94,50 @@ exports.ServiceHandle = class ServiceHandle
       log.error "Run dir #{rd} is not a directory"
     else
       opts =
-        cwd : @_config.rundir
         env : process.env
         setsid : false
+        
+      # We used to set the dir, but then the runpath has to be relative
+      # to the dir we CD into, which was tricky.  A future plan is to
+      # have the child chdir itself, which will probably be easier
+      # WRT to module loading, too.
+      # 
+      # cwd : @_config.rundir
+       
       @_channel = cp.fork cl.shift(), cl, opts
-      @_channel.on 'call', (args...) => @handle_child_call args
       @_channel.on 'exit', (code) => @exit_cb code
       @_pid = @_channel.pid
       @_rpc_channel = new RpcStream @_channel, @prefix()
-      await @ping defer ok
+      @_rpc_channel.on 'call', (args...) => @handle_child_call args...
+      await @_ping_cb = defer ok
+      log.info "#{@_name}: ping returned!"
     cb ok
    
   ##-----------------------------------------
 
-  handle_fetch_config : (arg, h, reply) ->
-    reply.reply @_parent.config.export_to_rpc(), null
+  handle_ping : (arg, h, reply) ->
+    if @_ping_cb
+      ok = (arg == @_pid)
+      reply.reply ok, null
+      cb = @_ping_cb
+      @_ping_cb = null
+      cb ok
+    else
+      log.error "from pid=#{@_pid}: got a random ping we did not expect..."
    
   ##-----------------------------------------
 
-  handle_child_call : (name, args...) ->
+  handle_fetch_config : (arg, h, reply) ->
+    reply.reply @_parent.config().export_to_rpc(), null
+   
+  ##-----------------------------------------
+
+  handle_child_call : (name, arg, h, reply) ->
     switch name
+      when "ping"
+        @handle_ping arg, h, reply
       when "fetch_config"
-        @handle_fetch_config args
+        @handle_fetch_config arg, h, reply
       else
         reply.reject sc.RPC_MSG_PROC_UNAVAIL
          

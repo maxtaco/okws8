@@ -41,6 +41,7 @@ exports.Stream = class Stream extends EventEmitter
   ##------------------------------
   
   _start: ->
+    log.info "starting ipc Stream"
     @_handle.on 'exit',    (code)   => @_handle_exit code
     @_handle.on 'message', (msg, h) => @_handle_message msg, h
   
@@ -84,6 +85,11 @@ exports.Stream = class Stream extends EventEmitter
     @_handle.send obj, h
 
   ##------------------------------
+
+  _error : (m) ->
+    log.error "Error in IPC RPC: #{m}"
+  
+  ##------------------------------
   
   _handle_reply : (m, h) ->
     x = m.xid
@@ -111,6 +117,7 @@ exports.Stream = class Stream extends EventEmitter
   ##------------------------------
   
   _handle_message : (m, h) ->
+    log.info "message incoming #{m}"
     if m == null
       @_hit_eof()
     else if not m.xid?
@@ -131,9 +138,10 @@ exports.Stream = class Stream extends EventEmitter
       xid : x
       name : name
       arg : arg
-      dir : 1
+      dir : 0
+    log.info "calling a ping: #{JSON.stringify obj}"
     cb = ( (m,h) -> ) unless cb
     @_tab[x] = cb
-    @_handle.send obj, h
+    x = @_handle.send obj, h
 
   ##-----------------------------------------------------------------------

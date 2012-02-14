@@ -47,7 +47,7 @@ if not logger?
   exports.logger = logger = new Logger()
 
 exports.set_proc = (n) ->
-  logger.set_proc path.basename n, '.coffee'
+  logger.set_proc path.basename n
 
 ###
 Set up functions for log.info "blah" and log.critical "poop" etc

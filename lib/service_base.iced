@@ -1,18 +1,25 @@
 
 RpcStream      = require('./ipc_rpc').Stream
 {sc}           = require './status_codes'
+log            = require './log'
+path           = require 'path'
+{Config}       = require '../lib/config'
 
 ##=======================================================================
 
-exports ServiceBase = class ServiceBase
+exports.ServiceBase = class ServiceBase
 
   constructor : (@_argv) ->
-    @_pid = process.pid
-    @_parent_proc = new RpcStream new RpcStream process, @prefix()
+    log.set_proc @_argv[1]
+    
+    # See node/fixtures/child-process-spawn-node.js;
+    #   we treat the process object as an event emitter,
+    #   and can call process.on on it...
+    @_parent_proc = new RpcStream process, @prefix()
     @_start()
     @_ping_waiter = null
 
-  prefix : -> #{@_argv[1]}[#{@_pid}]"
+  prefix : -> "#{process.title}[process.pid]"
 
   _start : ->
     @_parent_proc.on 'call', (args...) => @handle_parent_call args
@@ -45,9 +52,18 @@ exports ServiceBase = class ServiceBase
     cb ok
 
   launch : (cb) ->
-    await @_ping_waiter = defer()
-    await @fetch_config defer()
+    await @_parent_proc.call "ping", process.pid, null, defer code, res
+    ok = if code isnt sc.OK
+      log.error "ping returned with code=#{code}"
+      false
+    else if not res
+      log.error "ping failed upstream"
+      false
+    else true
+    await @fetch_config defer ok if ok
+    cb ok
 
   run : () ->
-    await launch defer()
-    log.info "Output Config: #{JSON.stingify @_config.export_to_rpc()}"
+    log.info "starting up"
+    await @launch defer()
+    log.info "Output Config: #{JSON.stringify @_config.export_to_rpc()}"
