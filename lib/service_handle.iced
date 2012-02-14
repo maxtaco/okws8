@@ -110,7 +110,7 @@ exports.ServiceHandle = class ServiceHandle
       @_rpc_channel = new RpcStream @_channel, @prefix()
       @_rpc_channel.on 'call', (args...) => @handle_child_call args...
       await @_ping_cb = defer ok
-      log.info "#{@_name}: ping returned!"
+      log.info "#{@_name}: startup ping round-trip OK" if ok
     cb ok
    
   ##-----------------------------------------

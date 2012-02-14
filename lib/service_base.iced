@@ -65,5 +65,9 @@ exports.ServiceBase = class ServiceBase
 
   run : () ->
     log.info "starting up"
-    await @launch defer()
-    log.info "Output Config: #{JSON.stringify @_config.export_to_rpc()}"
+    await @launch defer ok
+    if ok
+      log.info "launch succeded"
+    else
+      log.error "launch failed; bailing out"
+      process.exit -2
