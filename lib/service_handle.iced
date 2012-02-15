@@ -2,8 +2,9 @@ cp        = require 'child_process'
 log       = require './log'
 RpcStream = require('./ipc_rpc').Stream
 {sc}      = require './status_codes'
-fs        = require 'fs'
+fsw       = require './fsw'
 constants = require './constants'
+{iand}    = require 'iced-coffee-script/lib/coffee-script/icedlib'
 
 #=======================================================================
 
@@ -85,14 +86,15 @@ exports.ServiceHandle = class ServiceHandle
     cl = @makeCmdLine()
     rd = @_config.rundir
     log.info "#{@_name}: launching: #{cl.join ' '} (rundir: #{rd})"
-    await fs.stat rd, defer err, stats
-    if err
-      log.error "In sanity check of run dir '#{rd}': #{err}"
-    else if not stats
-      log.error "Cannot find directory #{rd}"
-    else if not stats.isDirectory()
-      log.error "Run dir #{rd} is not a directory"
-    else
+
+    out = [ true ]
+    await
+      fsw.checkFile cl[0],   iand defer(), out
+      fsw.checkDir  rd,      iand defer(), out
+
+    ok = out[0]
+    
+    if ok
       opts =
         env : process.env
         setsid : false
@@ -111,6 +113,7 @@ exports.ServiceHandle = class ServiceHandle
       @_rpc_channel.on 'call', (args...) => @handle_child_call args...
       await @_ping_cb = defer ok
       log.info "#{@_name}: startup ping round-trip OK" if ok
+      
     cb ok
    
   ##-----------------------------------------
