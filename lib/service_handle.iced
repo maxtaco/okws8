@@ -99,13 +99,6 @@ exports.ServiceHandle = class ServiceHandle
         env : process.env
         setsid : false
         
-      # We used to set the dir, but then the runpath has to be relative
-      # to the dir we CD into, which was tricky.  A future plan is to
-      # have the child chdir itself, which will probably be easier
-      # WRT to module loading, too.
-      # 
-      # cwd : @_config.rundir
-       
       @_channel = cp.fork cl.shift(), cl, opts
       @_channel.on 'exit', (code) => @exit_cb code
       @_pid = @_channel.pid
@@ -131,7 +124,8 @@ exports.ServiceHandle = class ServiceHandle
   ##-----------------------------------------
 
   handle_fetch_config : (arg, h, reply) ->
-    reply.reply @_parent.config().export_to_rpc(), null
+    obj = @_parent.config().export_to_rpc @_name
+    reply.reply obj, null
    
   ##-----------------------------------------
 

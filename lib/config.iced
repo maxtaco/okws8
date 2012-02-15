@@ -30,17 +30,24 @@ exports.Config = class Config
    
   #-----------------------------------------
 
-  export_to_rpc : () ->
+  export_to_rpc : (helper) ->
     file : @_file_name
     obj : @_json
-    argv_opts : @_argv_opts 
+    argv_opts : @_argv_opts
+    helper_name : helper
+   
+  #-----------------------------------------
+
+  me_as_helper : () ->
+    @helpers()[@_helper_name]
    
   #-----------------------------------------
   
   import_from_rpc : (o) ->
     @_file_name = o.file
     @_json = o.obj
-    @_argv_opts = o.argv_opts 
+    @_argv_opts = o.argv_opts
+    @_helper_name = o.helper_name
    
   #-----------------------------------------
 
