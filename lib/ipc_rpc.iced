@@ -26,6 +26,49 @@ class Reply
 
 ##=======================================================================
 
+#
+# stolen from node/lib/child_process.js, and slightly modified...
+# 
+exports.setupChannel = (target, channel) ->
+  jsonBuffer = ''
+  target._channel = channel
+  
+  channel.onread = (pool, offset, length, recvHandle) ->
+    if pool
+      jsonBuffer += pool.toString('ascii', offset, offset + length)
+      i = start = 0
+      while ((i = jsonBuffer.indexOf('\n', start)) >= 0) 
+        json = jsonBuffer.slice start, i
+        message = JSON.parse json
+        target.emit 'message', message, recvHandle
+        start = i + 1
+      jsonBuffer = jsonBuffer.slice start
+    else
+      channel.close()
+      target._channel = null
+
+  target.send = (message, sendHandle) ->
+    
+    if typeof message is 'undefined'
+      throw new TypeError 'message cannot be undefined'
+    if !target._channel
+      throw new Error "channel closed"
+    # For overflow protection don't write if channel queue is too deep.
+    if channel.writeQueueSize > 1024 * 1024
+      return false
+
+    buffer = Buffer(JSON.stringify(message) + '\n');
+    writeReq = channel.write(buffer, 0, buffer.length, sendHandle);
+    if !writeReq
+      throw errnoException(errno, 'write', 'cannot write to IPC channel.');
+    writeReq.oncomplete = () ->
+    return true
+
+  channel.readStart()
+    
+
+##=======================================================================
+
 exports.Stream = class Stream extends EventEmitter
 
   ##------------------------------

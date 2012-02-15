@@ -95,6 +95,12 @@ exports.ServiceBase = class ServiceBase
    
   ##-----------------------------------------
 
+  handle_new_connection : (s) ->
+    log.warn "New connection, but nothing to do!"
+    s.end()
+   
+  ##-----------------------------------------
+
   open_listen_socket : (cb) ->
     sock = @_my_sock = @_my_config.listen
     ok = true
@@ -110,6 +116,7 @@ exports.ServiceBase = class ServiceBase
         log.error "Error opening socket #{sock}: #{err}"
       else
         @_server.on "err", ((e) => @handle_socket_err e)
+        @_server.on "connection", ((s) => @handle_new_connection s)
         log.info "listening successfully on socket"
     cb ok
     
